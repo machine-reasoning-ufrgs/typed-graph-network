@@ -160,15 +160,15 @@ def build_neurosat(d):
 if __name__ == '__main__':
 	req_dirs = [ "instances", "instances/sat", "instances/unsat", "test_instances", "test_instances/sat", "test_instances/unsat" ]
 	if not all( map( os.path.isdir, req_dirs ) ):
-		print( "{timestamp}\t{memory}\tBuilding train and test datasets ...".format	( timestamp = timestamp(), memory = memory_usage() ) )
+		print( "{timestamp}\t{memory}\tBuilding train and test datasets ...".format( timestamp = timestamp(), memory = memory_usage() ), flush = True )
 		map( os.makedirs, req_dirs )
 		from cnf import create_dataset
-		create_dataset( 10, 40, 16, path = "instances" )
-		create_dataset( 40, 40, 16, path = "test_instances" )
+		create_dataset( 10, 40, 25600, path = "instances" )
+		create_dataset( 40, 40, 512, path = "test_instances" )
 	#end if
-	d 					= 2
+	d 					= 128
 	epochs 				= 100
-	batch_size 			= 2
+	batch_size 			= 32
 	batches_per_epoch 	= 128
 	timesteps 			= 26
 

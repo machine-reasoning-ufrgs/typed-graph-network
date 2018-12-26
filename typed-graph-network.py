@@ -1,7 +1,7 @@
 import tensorflow as tf
 from mlp import Mlp
 
-class GraphNN(object):
+class TGN(object):
   def __init__(
     self,
     var,
@@ -16,7 +16,7 @@ class GraphNN(object):
     Msg_activation = tf.nn.relu,
     Msg_last_activation = None,
     float_dtype = tf.float32,
-    name = 'GraphNN'
+    name = 'TGN'
   ):
     """
     Receives three dictionaries: var, mat and msg.
@@ -66,7 +66,7 @@ class GraphNN(object):
       with tf.variable_scope('parameters'):
         self._init_parameters()
       #end parameter scope
-    #end GraphNN scope
+    #end TGN scope
   #end __init__
 
   def check_model(self):
@@ -269,4 +269,4 @@ class GraphNN(object):
     #end for mat, (v1,v2)
     return assertions
   #end check_run
-#end GraphNN
+#end TGN

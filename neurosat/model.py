@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 # Import model builder
-from graphnn import GraphNN
+from tgn import TGN
 from mlp import Mlp
 from cnf import CNF
 
@@ -51,8 +51,8 @@ def build_neurosat(d):
     ) for v, init in initial_embeddings.items()
   }
 
-  # Define Graph neural network
-  gnn = GraphNN(
+  # Define Typed Graph Network
+  gnn = TGN(
     var,
     {
       "M": ("L","C")

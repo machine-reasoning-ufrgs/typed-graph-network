@@ -17,11 +17,11 @@ if __name__ == '__main__':
   if not os.path.isdir( "tmp" ):
     os.makedirs( "tmp" )
   #end if
-  epochs = 30
+  epochs = 2**10
   d = 128
   
   time_steps = 26
-  batch_size = 64
+  batch_size = 128
   batches_per_epoch = 128
   
   early_stopping_window = [ 0 for _ in range(3) ]
@@ -34,13 +34,19 @@ if __name__ == '__main__':
   # Create batch loader
   print( "{timestamp}\t{memory}\tLoading instances ...".format( timestamp = timestamp(), memory = memory_usage() ) )
   generator = instance_loader.InstanceLoader( "./instances" )
+  # If you want to use the entire dataset on each epoch, use:
+  # batches_per_epoch = len(generator.filenames) // batch_size
+  
   test_generator = instance_loader.InstanceLoader( "./test-instances" )
 
   # Create model saver
   saver = tf.train.Saver()
 
   # Disallow GPU use
-  config = tf.ConfigProto( device_count = {"GPU":0})
+  config = tf.ConfigProto( 
+    #device_count = {"GPU":0},
+    gpu_options = tf.GPUOptions( allow_growth = True ),
+  )
   with tf.Session(config=config) as sess:
 
     # Initialize global variables

@@ -1,7 +1,8 @@
+import os
+import multiprocessing as mp
 import pycosat
 import copy
 import numpy as np
-import os
 
 class CNF(object):
 
@@ -10,6 +11,7 @@ class CNF(object):
     self.m = m
     self.clauses = []
     self.sat = None
+    self.filename = ""
   #end
 
   def SR(n):
@@ -19,7 +21,7 @@ class CNF(object):
 
     while sat:
       # Select a random k ~ Bernouilli(0.3) + Geo(0.4)
-      k = np.random.binomial(1,0.4) + np.random.geometric(0.4)
+      k = 1 + np.random.binomial(1,0.3) + np.random.geometric(0.4)
       # Create a clause with k randomly selected variables
       clause = [ int(np.random.randint(1,n+1) * np.random.choice([-1,+1])) for i in range(k) ]
       # Append clause to cnf
@@ -80,6 +82,7 @@ class CNF(object):
       for i in range(m):
         cnf.clauses.append( [ int(x) for x in f.readline().split()[:-1]] )
       #end
+      cnf.filename = path
     #end
     return cnf
   #end
@@ -87,7 +90,7 @@ class CNF(object):
 
 class BatchCNF(object):
 
-  def __init__(self,n,m,clauses,sat):
+  def __init__(self,n,m,clauses,sat,filenames=None):
     """
       batch_size: number of instances in this batch
       n: number of variables for each instance
@@ -104,6 +107,7 @@ class BatchCNF(object):
     self.total_m = sum(m)
     self.clauses = clauses
     self.sat = sat
+    self.filenames = [] if filenames is None else filenames
   #end
   
   def get_dense_matrix(self):
@@ -164,40 +168,66 @@ def create_batchCNF(instances):
   m = []
   clauses = []
   sat = []
+  filenames = []
   offset = 0
   for cnf in instances:
     n.append(cnf.n)
     m.append(cnf.m)
     clauses.extend( [ [ np.sign(literal) * (abs(literal) + offset) for literal in clause ] for clause in cnf.clauses ] )
     sat.append(cnf.sat)
+    filenames.append(cnf.filename)
     offset += cnf.n
   #end
 
-  return BatchCNF(n,m,clauses,sat)
+  return BatchCNF(n,m,clauses,sat,filenames)
 #end
 
-def create_dataset( n_min = 10, n_max = 40, samples = 1000, path = "instances" ):
-  for i in range(samples):
-    cnf1, cnf2 = CNF.SRU( 10, 40 )
-    cnf1.write_dimacs("{}/unsat/{}.cnf".format(path,i))
-    cnf2.write_dimacs("{}/sat/{}.cnf".format(path,i))
-  #end for
+def create_dataset( n_min = 10, n_max = 40, samples = 1000, path = "instances", MP=True ):
+  if not MP:
+    for i in range(samples):
+    
+      cnf1, cnf2 = CNF.SRU( 10, 40 )
+      
+      cnf1.write_dimacs("{}/unsat/{:09d}-{:09d}-{}.cnf".format(path,cnf1.n,cnf1.m,i))
+      cnf2.write_dimacs("{}/sat/{:09d}-{:09d}-{}.cnf".format(path,cnf2.n,cnf2.m,i))
+    #end for
+  else:
+    ns = [ np.random.randint(n_min,n_max+1) for i in range(samples) ]
+    ns.sort()
+    print( "Starting multithreading with {} cores".format(mp.cpu_count()) )
+    with mp.Pool(mp.cpu_count()) as p:
+      for i, (cnf1, cnf2) in enumerate( p.imap( CNF.SR, ns ) ):
+        print( "{pct:0.2f}% -- {instance}".format( pct = 100.0 * i / samples, instance = i ) )
+        cnf1.write_dimacs("{}/unsat/{:09d}-{:09d}-{}.cnf".format(path,cnf1.n,cnf1.m,i))
+        cnf2.write_dimacs("{}/sat/{:09d}-{:09d}-{}.cnf".format(path,cnf2.n,cnf2.m,i))
+      #end for
+    #end with
+  #end if
 #end
 
-def create_critical_dataset( n = 40, samples = 512, path = "critical_instances" ):
-  for i in range( samples ):
-    cnf = CNF.random_3SAT_critical( n )
-    cnf.write_dimacs( "{}/{}.cnf".format( path, i ) )
-  #end for
+def create_critical_dataset( n = 40, samples = 512, path = "critical_instances", MP=True  ):
+  if not MP:
+    for i in range( samples ):
+      cnf = CNF.random_3SAT_critical( n )
+      cnf.write_dimacs( "{}/{:09d}-{}.cnf".format( path, cnf.n, i ) )
+    #end for
+  else:
+    ns = [ n for i in range(samples) ]
+    ns.sort()
+    with mp.Pool(12) as p:
+      for i, cnf in enumerate( p.imap( CNF.random_3SAT_critical, ns ) ):
+        cnf.write_dimacs( "{}/{:09d}-{}.cnf".format( path, cnf.n, i ) )
+    #end if
+    #end with
 #end create_critical_dataset
 
-def ensure_datasets( make_critical = False ):
+def ensure_datasets( make_critical = True ):
   idirs = [ "instances", "instances/sat", "instances/unsat" ]
   if not all( map( os.path.isdir, idirs ) ):
     for d in idirs:
       os.makedirs( d )
     #end for
-    create_dataset( 10, 40, 25600, path = idirs[0] )
+    create_dataset( 10, 40, 2**15, path = idirs[0] )
   #end if
   tdirs = [ "test-instances", "test-instances/sat", "test-instances/unsat" ]
   if not all( map( os.path.isdir, tdirs ) ):
